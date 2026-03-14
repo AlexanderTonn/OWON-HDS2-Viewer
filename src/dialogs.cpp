@@ -164,12 +164,18 @@ auto Dialogs::parseMsVolumes(std::string stringVolumes) -> std::vector<std::stri
     std::vector<std::string> volumeList;
     std::istringstream iss(stringVolumes);
 
-    #ifdef __APPLE__
+    for (std::string line; std::getline(iss, line); )
+    {
+        // trim whitespace including CR
+        while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' ' || line.back() == '\t'))
+            line.pop_back();
+        while (!line.empty() && (line.front() == ' ' || line.front() == '\t'))
+            line.erase(line.begin());
 
-    for (std::string line; std::getline(iss, line, '\n'); )
+        if (line.empty())
+            continue;
         volumeList.push_back(line);
-
-    #endif
+    }
 
     return volumeList;
 }

@@ -21,6 +21,9 @@
 #include <filesystem>
 #include <cstdio>
 #include <vector>
+#include <sys/stat.h>
+
+#include "fileHandler.hpp"
 
 #ifdef __APPLE__ || __linux__
 #include <sys/statvfs.h>
@@ -32,23 +35,26 @@ class usbMSC
 public:
     auto getMsVolumes() -> std::string;
     auto copy(std::string stringTargetSavePath) -> bool;
-    bool volumeFound = false; // if true, the owon volume is found
-
+    auto isVolumeFound() -> bool { return mIsVolumeFound; };
     auto checkVolumeString(std::string stringVolume) -> bool;
+
     private:
     auto isSystemVolume(std::string stringVolume) -> bool;
     auto isToBig(std::string stringVolume) -> bool;
     auto tryReadingCsvFiles(std::string stringVolume) -> bool;
 
+
 private:
-    constexpr static std::string_view stringSaveDir = "massStorageData";
+    constexpr static std::string_view stringSaveDir = "OWON";
 
     // create volume path
 private:
     template <std::size_t size>
     auto getVolumePath(std::array<char, size> arrayBuffer) -> void;
-    std::string stringVolumePath;
-
+    std::string mStringVolumePath;
+    std::string mStringCurrentDate;
+    std::string mStringSavePath;
+    bool mIsVolumeFound;
 
 private:
     auto createSaveDir(std::string stringInputPath) -> bool;
@@ -58,13 +64,12 @@ private:
         CSV,
         MOVE
     };
-    auto getFiles(getFile type, uint8_t fileNo) -> bool;
+    auto getFiles(getFile type, int fileNo) -> bool;
     constexpr static uint8_t MAX_FILE_COUNT = 4;
 
 // Create subfolder for saving the files
 private:
-    std::string stringCurrentDate;
-    std::string stringSavePath;
+
     auto setSavePath(std::string stringInputpath) -> bool;
     auto getDate() -> std::string;
 

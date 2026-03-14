@@ -7,10 +7,11 @@
  */
 auto usbMSC::createSaveDir(std::string stringInputPath) -> bool
 {
-    if (std::filesystem::exists(stringInputPath))
+    auto result = mkdir(stringInputPath.c_str(), 0755);
+    if(result == 0 || errno == EEXIST)
         return true;
     else
-        return std::filesystem::create_directory(stringInputPath);
+        return false;
 }
 
 /**
@@ -34,7 +35,7 @@ auto usbMSC::getMsVolumes() -> std::string
 #elif __linux__
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT", "r"), pclose);
 #elif __APPLE__
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("mount | awk '{print $3}'", "r"), pclose);
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("find /Volumes -mindepth 1 -maxdepth 1 -type d", "r"), pclose);
 #endif
 
     // Throw exception if volume listing failed
@@ -64,19 +65,14 @@ auto usbMSC::getMsVolumes() -> std::string
 auto usbMSC::copy(std::string stringTargetSavePath) -> bool
 {
     // Create subfolder for saving the files
-    if (volumeFound && setSavePath(stringTargetSavePath))
+    if (setSavePath(stringTargetSavePath))
     {
         // move the files
-        for (uint8_t i = 1; i <= MAX_FILE_COUNT; i++)
+        for (auto i = 1; i < MAX_FILE_COUNT; i++)
         {
             getFiles(getFile::CSV, i);
             getFiles(getFile::BMP, i);
         }
-
-        // unmount the volume
-        // std::string stringUnmountCmd = "diskutil unmount \"" + std::string(stringOwonVolume) + "\"";
-        //system(stringUnmountCmd.c_str());
-        volumeFound = false;
         return true;
     }
     else
@@ -124,20 +120,10 @@ auto usbMSC::getVolumePath(std::array<char, size> arrayBuffer) -> void
  */
 auto usbMSC::setSavePath(std::string stringInputpath) -> bool
 {
-    stringCurrentDate = getDate();
-    stringSavePath = stringInputpath + std::string(stringSaveDir) + "/" + stringCurrentDate + "/";
+    mStringCurrentDate = getDate();
+    mStringSavePath = stringInputpath + std::string(stringSaveDir) + "/" + mStringCurrentDate;
 
-    //auto mainDirPresent = createSaveDir(sInputpath);
-
-    if (std::filesystem::exists(stringSavePath))
-        return true;
-    else
-    {
-        if (stringCurrentDate != "")
-            return std::filesystem::create_directories(stringSavePath);
-        else
-            return false;
-    }
+    return createSaveDir(mStringSavePath);
 }
 /**
  * @brief get the Date of today
@@ -159,29 +145,33 @@ auto usbMSC::getDate() -> std::string
  * @param type enum class fileTypes
  * @param fileNo used for the file number
  */
-auto usbMSC::getFiles(getFile type, uint8_t fileNo) -> bool
+auto usbMSC::getFiles(getFile type, int fileNo) -> bool
 {
-    std::string stringVolFilePath; // Path on OWON Volume
+
     switch (type)
     {
     case getFile::BMP:
-        stringVolFilePath = stringVolumePath + "/" + "IMAGE" + std::to_string(fileNo) + ".BMP";
+        mStringVolumePath += "/" + std::string("IMAGE") + std::to_string(fileNo) + ".BMP";
         break;
     case getFile::CSV:
-        stringVolFilePath = stringVolumePath + "/" + "WAVE" + std::to_string(fileNo) + ".CSV";
+        mStringVolumePath += "/" + std::string("WAVE") + std::to_string(fileNo) + ".CSV";
+        std::cout << "Trying to get file: " << fileNo << std::endl;
         break;
     default:
         return false;
         break;
     }
     // Move
-    if (std::filesystem::exists(stringVolFilePath) && std::filesystem::exists(stringSavePath))
+
+    if(!std::filesystem::exists(mStringVolumePath))
     {
-        std::filesystem::copy(stringVolFilePath, stringSavePath, std::filesystem::copy_options::overwrite_existing);
-        return true;
-    }
-    else
         return false;
+    }
+
+    std::filesystem::copy(mStringVolumePath, mStringSavePath, std::filesystem::copy_options::overwrite_existing);
+
+    return true;
+
 }
 /**
  * @brief Check the inserted string whether it's a valid OWON volume
@@ -194,33 +184,31 @@ auto usbMSC::checkVolumeString(std::string stringVolume) -> bool
 
     // exit if the volume is a system volume
     // exit if the volume is to big
-    if(isSystemVolume(stringVolume) || isToBig(stringVolume))
+    if (isSystemVolume(stringVolume) || isToBig(stringVolume))
         return ret;
 
     // exit if no CSV Files present
     return tryReadingCsvFiles(stringVolume) ? true : false;
-
 }
 auto usbMSC::isSystemVolume(std::string stringVolume) -> bool
 {
-    #ifdef __APPLE__
+#ifdef __APPLE__
 
-        std::istringstream iss(stringVolume);
-        std::vector<std::string> stringComponents;
+    std::istringstream iss(stringVolume);
+    std::vector<std::string> stringComponents;
 
-        for (std::string s; getline(iss, s, '/'); )
-        {
-            stringComponents.push_back(s);
+    for (std::string s; getline(iss, s, '/');)
+    {
+        stringComponents.push_back(s);
+    }
 
-        }
+    for (auto &component : stringComponents)
+    {
+        if (component == "System")
+            return true;
+    }
 
-        for (auto &component : stringComponents)
-        {
-            if (component == "System")
-                return true;
-        }
-
-    #endif
+#endif
 }
 /**
  * @brief Check the size whether it's fitting to the volume size of the owon internal storage
@@ -230,12 +218,12 @@ auto usbMSC::isSystemVolume(std::string stringVolume) -> bool
  */
 auto usbMSC::isToBig(std::string stringVolume) -> bool
 {
-    //using statvfs (struct which supplies informations about system) to get the volume size
-    #ifdef __APPLE__ | __linux__
+//using statvfs (struct which supplies informations about system) to get the volume size
+#ifdef __APPLE__ | __linux__
     struct statvfs stat;
-    if(statvfs(stringVolume.c_str(), &stat) != 0)
+    if (statvfs(stringVolume.c_str(), &stat) != 0)
     {
-        std::cerr <<   "Error: statvfs() failed for " << stringVolume << std::endl;
+        std::cerr << "Error: statvfs() failed for " << stringVolume << std::endl;
         return false;
     }
     auto tenMegabyte = 10 * 1024 * 1024;
@@ -243,7 +231,7 @@ auto usbMSC::isToBig(std::string stringVolume) -> bool
 
     return totalSize >= tenMegabyte ? true : false;
 
-    #endif
+#endif
 }
 /**
  * @brief  Check if the volume contains CSV files of the OWON scope
@@ -253,12 +241,23 @@ auto usbMSC::isToBig(std::string stringVolume) -> bool
  */
 auto usbMSC::tryReadingCsvFiles(std::string stringVolume) -> bool
 {
-    if (    std::filesystem::exists(stringVolume + "/WAVE1.CSV")
-        ||  std::filesystem::exists(stringVolume + "/WAVE2.CSV")
-        ||  std::filesystem::exists(stringVolume + "/WAVE3.CSV")
-        ||  std::filesystem::exists(stringVolume + "/WAVE4.CSV"))
+    if (std::filesystem::exists(stringVolume + "/WAVE1.CSV") || std::filesystem::exists(stringVolume + "/WAVE2.CSV") ||
+        std::filesystem::exists(stringVolume + "/WAVE3.CSV") || std::filesystem::exists(stringVolume + "/WAVE4.CSV"))
+    {
+        mStringVolumePath = stringVolume;
+        mIsVolumeFound = true;
+        fileHandler _fileHandler;
+        std::string targetPath = _fileHandler.getHomeDir();
+
+        #ifdef __APPLE__ || __linux__
+        targetPath += "/Documents/";
+        #endif
+
+        copy(targetPath);
+
         return true;
+    }
+
     else
         return false;
-
 }

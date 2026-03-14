@@ -60,6 +60,8 @@ void WindowClass::Draw(std::string_view label)
                                  _fileMsc,
                                  fileHandler::contentPathOption::DIRECTORY,
                                  pageId);
+
+
         break;
 
     case Dialogs::currentPage::CHOICE_WINDOW:
@@ -408,7 +410,7 @@ auto WindowClass::drawFooter() -> void
     ImGui::Text("%s", arrayFooterData.at(1).c_str());
 
     ImGui::SameLine();
-    if (_usbMSC.volumeFound && ImGui::Button(_guiTexts.btn.at(languageSelection).footer.at(0).c_str()))
+    if (_usbMSC.isVolumeFound() && ImGui::Button(_guiTexts.btn.at(languageSelection).footer.at(0).c_str()))
         pageId = Dialogs::currentPage::CHOOSE_MSC_PATH;
 
 
@@ -435,6 +437,5 @@ auto WindowClass::handleFileData() -> void
         if (_usbMSC.copy(_fileMsc.stringCurrentFile))
         {
             arrayFooterData.at(1) = "Files copied to " + _fileMsc.stringCurrentFile;
-            _usbMSC.volumeFound = false;
         }
 }

@@ -43,8 +43,6 @@ public:
     };
     auto initFilePath(standardPath option) -> void; // Initialize the file path
     auto check() -> bool;
-
-    private:
     auto getHomeDir() -> std::filesystem::path; // Get the home directory
 
 };
