@@ -95,7 +95,81 @@ auto Dialogs::drawChoiceWindow(std::string stringName, std::string stringQuestio
  * if the selected device contiains WAVE.CSV file, it can be loaded
  * for preventing that a big drive will be checked, the maximum size is limited to 10MB
  */
-auto Dialogs::drawMsDeviceSelector() -> void
+auto Dialogs::drawMsDeviceSelector(usbMSC &_usbMSC, bool active) -> bool
 {
+    if(!active)
+        return false;
 
+    static bool volumeListPrinted = false;
+    static std::string msVolumes;
+    std::string stringError = "";
+    if (!volumeListPrinted)
+    {
+        msVolumes = _usbMSC.getMsVolumes();
+        volumeListPrinted = true;
+    }
+
+    // get the list of volumes and parse it
+    std::vector<std::string> volumeList = parseMsVolumes(msVolumes);
+
+    ImGui::OpenPopup(_guiTexts.lbl.at(languageSelection).dialogNames.at(1).c_str());
+
+    if (ImGui::BeginPopupModal(_guiTexts.lbl.at(languageSelection).dialogNames.at(1).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+    {
+        ImGui::Text("%s", _guiTexts.lbl.at(languageSelection).msSelector.at(0).c_str());
+        ImGui::Separator();
+
+            // List all available volumes
+            for(auto &volume : volumeList)
+            {
+                // if item selected, check the entry
+                if(ImGui::Selectable(volume.c_str()))
+                {
+                    if(!_usbMSC.checkVolumeString(volume))
+                    {
+                        stringError = _guiTexts.lbl.at(languageSelection).msSelector.at(1);
+                    }
+                }
+            }
+
+        ImGui::Separator();
+        ImGui::NewLine();
+        ImGui::Text("%s", stringError.c_str());
+
+        // OK Button
+        if (ImGui::Button(_guiTexts.btn.at(languageSelection).choiceWindow.at(0).c_str()))
+        {
+            volumeListPrinted = false;
+            ImGui::CloseCurrentPopup();
+        }
+        // Cancel Button
+        else if (ImGui::Button(_guiTexts.btn.at(languageSelection).choiceWindow.at(1).c_str()))
+        {
+            volumeListPrinted = false;
+            ImGui::CloseCurrentPopup();
+        }
+    }
+    ImGui::EndPopup();
+
+    return volumeListPrinted;
+}
+/**
+ * @brief Parse the whole string of volumes
+ *
+ * @param stringVolumes
+ * @return
+ */
+auto Dialogs::parseMsVolumes(std::string stringVolumes) -> std::vector<std::string>
+{
+    std::vector<std::string> volumeList;
+    std::istringstream iss(stringVolumes);
+
+    #ifdef __APPLE__
+
+    for (std::string line; std::getline(iss, line, '\n'); )
+        volumeList.push_back(line);
+
+    #endif
+
+    return volumeList;
 }

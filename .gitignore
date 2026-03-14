@@ -35,7 +35,6 @@
 .vscode/*
 
 # project specific
-*/vcpkg/
 build/*
 
 # created by macOs

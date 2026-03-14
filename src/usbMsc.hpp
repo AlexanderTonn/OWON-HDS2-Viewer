@@ -20,17 +20,27 @@
 #include <sstream>
 #include <filesystem>
 #include <cstdio>
+#include <vector>
+
+#ifdef __APPLE__ || __linux__
+#include <sys/statvfs.h>
+#endif
 
 class usbMSC
 {
 
 public:
-    auto findOwonVolume(bool active) -> bool;
+    auto getMsVolumes() -> std::string;
     auto copy(std::string stringTargetSavePath) -> bool;
     bool volumeFound = false; // if true, the owon volume is found
 
+    auto checkVolumeString(std::string stringVolume) -> bool;
+    private:
+    auto isSystemVolume(std::string stringVolume) -> bool;
+    auto isToBig(std::string stringVolume) -> bool;
+    auto tryReadingCsvFiles(std::string stringVolume) -> bool;
+
 private:
-    constexpr static std::string_view stringOwonVolume = "NO NAME";
     constexpr static std::string_view stringSaveDir = "massStorageData";
 
     // create volume path

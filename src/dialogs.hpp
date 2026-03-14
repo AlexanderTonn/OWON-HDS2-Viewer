@@ -3,9 +3,11 @@
 
 #include <filesystem>
 #include <string>
+#include <vector>
 
 #include "fileHandler.hpp"
 #include "guiStrings.hpp"
+#include "usbMSC.hpp"
 
 
 class Dialogs
@@ -18,7 +20,7 @@ public:
         MAIN,
         OPEN_CSV_FILE,
         CHOOSE_MSC_PATH,
-        CHOICE_WINDOW
+        CHOICE_WINDOW,
     };
 
     auto drawFilebrowser(std::filesystem::path &path,
@@ -30,7 +32,10 @@ public:
                          currentPage &page) -> void;
 
     auto drawChoiceWindow(std::string stringName, std::string stringQuestion) -> bool;
-    auto drawMsDeviceSelector() -> void;
+
+    auto drawMsDeviceSelector(usbMSC &_usbMSC, bool active) -> bool;
+    private:
+    auto parseMsVolumes(std::string stringVolumes) -> std::vector<std::string>;
 };
 
 #endif // DIALOGS_HPP

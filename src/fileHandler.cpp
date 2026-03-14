@@ -38,9 +38,9 @@ auto fileHandler::getContentOfPath(std::filesystem::path &path, contentPathOptio
         auto entryName = entry.path().filename().string();
 
 
-        #ifdef _WIN32
+#ifdef _WIN32
         sDirSeparator = "\\";
-        #endif
+#endif
 
         if (isDir)
         {
@@ -133,7 +133,11 @@ auto fileHandler::getFileAtPos(std::filesystem::path fPath, uint16_t uiPos) -> s
  */
 auto fileHandler::initFilePath(standardPath option) -> void
 {
-    char * ptr_xdgPath = nullptr;
+
+#if __APPLE__ || __linux__
+    std::filesystem::path home = getHomeDir();
+#endif
+
     switch (option)
     {
     case standardPath::DESKTOP:
@@ -141,15 +145,12 @@ auto fileHandler::initFilePath(standardPath option) -> void
         path = std::filesystem::path(std::getenv("USERPROFILE")) / "Desktop";
 
 #elif __APPLE__ || __linux__
-        // check if XDG_DESKTOP_DIR is set
-        if (std::getenv("XDG_DESKTOP_DIR"))
-            path = std::filesystem::path(std::getenv("XDG_DESKTOP_DIR"));
-        // if XDG_DESKTOP_DIR is not set ...
-        else if(std::getenv("HOME/Desktop"))
-            path = std::filesystem::path(std::getenv("HOME/Desktop"));
-        // if HOME/Desktop is not set ...
+
+        if (!std::filesystem::exists(home / "Desktop"))
+            std::cerr << "std::filesystem::path " << path << " does not exist" << std::endl;
+
         else
-            path = std::filesystem::path(std::getenv("HOME"));
+            path = home;
 #endif
 
         break;
@@ -158,13 +159,12 @@ auto fileHandler::initFilePath(standardPath option) -> void
 #ifdef _WIN32
         path = std::filesystem::path(std::getenv("USERPROFILE")) / "Documents";
 #elif __APPLE__ || __linux__
-        ptr_xdgPath = std::getenv("XDG_DOCUMENTS_DIR");
-        if (ptr_xdgPath)
-            path = std::filesystem::path(std::getenv("XDG_DOCUMENTS_DIR"));
-        else if (std::getenv("HOME/Documents"))
-            path = std::filesystem::path(std::getenv("HOME")) / "Documents";
+
+        if (!std::filesystem::exists(home / "Documents"))
+            std::cerr << "std::filesystem::path " << path << " does not exist" << std::endl;
+
         else
-            path = std::filesystem::path(std::getenv("HOME"));
+            path = home;
 #endif
         break;
 
@@ -172,12 +172,13 @@ auto fileHandler::initFilePath(standardPath option) -> void
 #ifdef _WIN32
         path = std::filesystem::path(std::getenv("USERPROFILE")) / "Downloads";
 #elif __APPLE__ || __linux__
-        if (std::getenv("XDG_DOWNLOAD_DIR"))
-            path = std::filesystem::path(std::getenv("XDG_DOWNLOAD_DIR"));
-        else if(std::getenv("HOME/Downloads"))
-            path = std::filesystem::path(std::getenv("HOME/Downloads"));
+
+        if (!std::filesystem::exists(home / "Downloads"))
+            std::cerr << "std::filesystem::path " << path << " does not exist" << std::endl;
+
         else
-            path = std::filesystem::path(std::getenv("HOME"));
+            path = home;
+
 #endif
         break;
 
@@ -185,36 +186,37 @@ auto fileHandler::initFilePath(standardPath option) -> void
 #ifdef _WIN32
         path = std::filesystem::path(std::getenv("USERPROFILE")) / "Pictures";
 #elif __APPLE__ || __linux__
-        if (std::getenv("XDG_PICTURES_DIR"))
-            path = std::filesystem::path(std::getenv("XDG_PICTURES_DIR"));
-        else if (std::getenv("HOME/Pictures"))
-            path = std::filesystem::path(std::getenv("HOME/Pictures"));
+
+        if (!std::filesystem::exists(home / "Pictures"))
+            std::cerr << "std::filesystem::path " << path << " does not exist" << std::endl;
+
         else
-            path = std::filesystem::path(std::getenv("HOME"));
+            path = home;
 #endif
         break;
     case standardPath::MUSIC:
 #ifdef _WIN32
         path = std::filesystem::path(std::getenv("USERPROFILE")) / "Music";
 #elif __APPLE__ || __linux__
-        if (std::getenv("XDG_MUSIC_DIR"))
-            path = std::filesystem::path(std::getenv("XDG_MUSIC_DIR"));
-        else if (std::getenv("HOME/Music"))
-            path = std::filesystem::path(std::getenv("HOME/Music"));
+
+        if (!std::filesystem::exists(home / "Music"))
+            std::cerr << "std::filesystem::path " << path << " does not exist" << std::endl;
+
         else
-            path = std::filesystem::path(std::getenv("HOME"));
+            path = home;
 #endif
         break;
     case standardPath::VIDEOS:
 #ifdef _WIN32
         path = std::filesystem::path(std::getenv("USERPROFILE")) / "Videos";
 #elif __APPLE__ || __linux__
-        if (std::getenv("XDG_VIDEOS_DIR"))
-            path = std::filesystem::path(std::getenv("XDG_VIDEOS_DIR"));
-        else if(std::getenv("HOME/Videos"))
-            path = std::filesystem::path(std::getenv("HOME/Videos"));
+
+        if (!std::filesystem::exists(home / "Videos"))
+            std::cerr << "std::filesystem::path " << path << " does not exist" << std::endl;
+
         else
-            path = std::filesystem::path(std::getenv("HOME"));
+            path = home;
+
 #endif
         break;
     default:
@@ -230,11 +232,29 @@ auto fileHandler::initFilePath(standardPath option) -> void
  */
 auto fileHandler::check() -> bool
 {
+    bool ret = false;
+
     if (!fileLoaded && !stringCurrentFile.empty())
     {
         fileLoaded = true;
-        return true;
+        return ret;
     }
-    else
-        return false;
+    return ret;
+}
+/**
+ * @brief Get the Home dir
+ * @note Linux and MacOS only
+ *
+ * @return HOME/
+ */
+auto fileHandler::getHomeDir() -> std::filesystem::path
+{
+    std::filesystem::path home = std::getenv("HOME");
+
+    if (home.empty())
+    {
+        throw std::runtime_error("No home directory found");
+    }
+
+    return home;
 }

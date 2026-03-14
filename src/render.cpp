@@ -19,8 +19,10 @@ void WindowClass::Draw(std::string_view label)
     // Backend stuff
     // ##########
 
-    if(firstCycle)
+    if (firstCycle)
     {
+        _fileCSV.initFilePath(fileHandler::standardPath::DESKTOP);
+        _fileMsc.initFilePath(fileHandler::standardPath::DESKTOP);
         _guiTexts.init();
         firstCycle = false;
     }
@@ -37,15 +39,7 @@ void WindowClass::Draw(std::string_view label)
     switch (pageId)
     {
     case Dialogs::currentPage::MAIN:
-        drawMenu();
-        ImGui::SetCursorPos(ImVec2(0.0F, 18.0F));
-
-        drawHeader();
-        drawCursorData();
-        drawPlot(voltUnitId);
-        trigMscDetection();
-
-        drawFooter();
+            mainPage();
         break;
 
     case Dialogs::currentPage::OPEN_CSV_FILE:
@@ -69,7 +63,8 @@ void WindowClass::Draw(std::string_view label)
         break;
 
     case Dialogs::currentPage::CHOICE_WINDOW:
-        _dialogs.drawChoiceWindow(_guiTexts.lbl.at(languageSelection).dialogNames.at(0).c_str(), _guiTexts.lbl.at(languageSelection).fileBrowser.at(0).c_str());
+        _dialogs.drawChoiceWindow(_guiTexts.lbl.at(languageSelection).dialogNames.at(0).c_str(),
+                                  _guiTexts.lbl.at(languageSelection).fileBrowser.at(0).c_str());
         break;
 
     default:
@@ -148,6 +143,20 @@ auto WindowClass::drawPlot(voltUnit unit) -> void
     }
 }
 
+auto WindowClass::mainPage() -> void
+{
+    drawMenu();
+    ImGui::SetCursorPos(ImVec2(0.0F, 18.0F));
+
+    drawHeader();
+    drawCursorData();
+    drawPlot(voltUnitId);
+
+    findOwonVolumeActive = _dialogs.drawMsDeviceSelector(_usbMSC, findOwonVolumeActive);
+
+    drawFooter();
+}
+
 /**
  * @brief Draw the header informations of the csv file
  *
@@ -205,7 +214,8 @@ auto WindowClass::drawComboboxYUnit(voltUnit &unit) -> void
 {
 
     static size_t item_current = 0;
-    if (ImGui::BeginCombo(_guiTexts.cb.at(languageSelection).names.at(0).c_str(), _guiTexts.cb.at(languageSelection).unitY.at(item_current).c_str()))
+    if (ImGui::BeginCombo(_guiTexts.cb.at(languageSelection).names.at(0).c_str(),
+                          _guiTexts.cb.at(languageSelection).unitY.at(item_current).c_str()))
     {
         size_t aSize = _guiTexts.cb.at(languageSelection).unitY.size();
         for (size_t n = 0; n < aSize; n++)
@@ -242,6 +252,8 @@ auto WindowClass::drawMenu() -> void
             //btn open file
             if (ImGui::MenuItem(_guiTexts.btn.at(languageSelection).menu.at(0).c_str()))
                 pageId = Dialogs::currentPage::OPEN_CSV_FILE;
+
+            // Get file from owon volume
             ImGui::MenuItem(_guiTexts.chkbx.at(languageSelection).names.at(2).c_str(), nullptr, &findOwonVolumeActive);
             ImGui::EndMenu();
         }
@@ -327,7 +339,8 @@ auto WindowClass::drawCursorData() -> void
         ImGui::Text("Voltage: ");
         ImGui::TableNextColumn();
 
-        stringCursorUnit = (voltUnitId == voltUnit::V) ? _guiTexts.cb.at(languageSelection).unitY.at(1) : _guiTexts.cb.at(languageSelection).unitY.at(0);
+        stringCursorUnit = (voltUnitId == voltUnit::V) ? _guiTexts.cb.at(languageSelection).unitY.at(1)
+                                                       : _guiTexts.cb.at(languageSelection).unitY.at(0);
 
         ImGui::Text("A: %.2f %s", arrayPlottCursors[2], stringCursorUnit.data());
         ImGui::TableNextColumn();
@@ -371,18 +384,7 @@ auto WindowClass::openBugReport() -> void
 #endif
     }
 }
-/**
- * @brief Trigger the Mass storage volume detection
- *
- */
-auto WindowClass::trigMscDetection() -> void
-{
-    // owon msc was found
-    if (_trig.at(0).fire(1'000))
-        _usbMSC.findOwonVolume(findOwonVolumeActive);
-        if (_usbMSC.volumeFound)
-            arrayFooterData.at(1) = _guiTexts.lbl.at(languageSelection).fileBrowser.at(0);
-}
+
 /**
  * @brief Draw the footer data
  *
@@ -424,13 +426,6 @@ auto WindowClass::footerStartPos() -> float
 
 auto WindowClass::handleFileData() -> void
 {
-    // Get path of the desktop
-    if (firstCycle)
-    {
-        _fileCSV.initFilePath(fileHandler::standardPath::DOCUMENTS);
-        _fileMsc.initFilePath(fileHandler::standardPath::DOCUMENTS);
-        firstCycle = false;
-    }
 
     // Draw the plot, if file is present
     if (_fileCSV.check())

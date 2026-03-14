@@ -30,6 +30,7 @@ struct labels
     std::array<std::string, 2> fileBrowser ;
     std::array<std::string, 9> header ;
     std::array<std::string, 2> footer ;
+    std::array<std::string, 2> msSelector;
 };
 struct comboBoxes
 {

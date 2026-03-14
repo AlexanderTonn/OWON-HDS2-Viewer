@@ -14,69 +14,47 @@ auto usbMSC::createSaveDir(std::string stringInputPath) -> bool
 }
 
 /**
- * @brief Find the owon volume in the file system
- * @note the function is blocking the execution if volume was already found
- * @param xActive Activate the function
- * @return true if the volume was found
+ * @brief get a list of all volumes
+ * @note
+ *
+ * @return the string with the volumes
  */
-auto usbMSC::findOwonVolume(bool active) -> bool
+auto usbMSC::getMsVolumes() -> std::string
 {
-    if (active && !volumeFound)
-    {
-        // Buffer for the command output
-        // if buffer is too small the fget() have to be called multiple times
-        std::array<char, 2'048> arrayBuffer;
-        std::string stringParseResult;
+    // Buffer for the command output
+    // if buffer is too small the fget() have to be called multiple times
+    std::array<char, 2'048> arrayBuffer;
+    std::string stringParseResult;
 
-        // Open and execute command in shell
+    // Open and execute command in shell
 
 
 #ifdef _WIN32
-        std::unique_ptr<FILE,decltype(&_pclose)>pipe(_popen("wmic logicaldisk get volumeName", "r"), _pclose);
+    std::unique_ptr<FILE, decltype(&_pclose)> pipe(_popen("wmic logicaldisk get volumeName", "r"), _pclose);
 #elif __linux__
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT", "r"), pclose);
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT", "r"), pclose);
 #elif __APPLE__
-        std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("diskutil list", "r"), pclose);
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen("mount | awk '{print $3}'", "r"), pclose);
 #endif
 
-        // Throw exception if volume listing failed
-        try
-        {
-            if(!pipe)
-                throw std::runtime_error("popen() failed!");
-        }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
-        }
-
-        while (fgets(arrayBuffer.data(), arrayBuffer.size(), pipe.get()) != nullptr)
-        {
-            stringParseResult += arrayBuffer.data();
-            std::cout << stringParseResult << std::endl; // Show Volumes in Terminal
-        }
-
-#if defined(_WIN32) || defined(__APPLE__)
-        if (stringParseResult.find(stringOwonVolume) != std::string::npos)
-        {
-            getVolumePath(arrayBuffer);
-            volumeFound = true;
-            return true;
-        }
-        else
-            return false;
-#elif __linux__
-        if (isSize_and_FAT12(aBuffer))
-        {
-            xVolumeFound = true;
-            return true;
-        }
-        else
-            return false;
-#endif
+    // Throw exception if volume listing failed
+    try
+    {
+        if (!pipe)
+            throw std::runtime_error("popen() failed!");
     }
-    else
-        return false;
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    while (fgets(arrayBuffer.data(), arrayBuffer.size(), pipe.get()) != nullptr)
+    {
+        stringParseResult += arrayBuffer.data();
+        std::cout << stringParseResult << std::endl; // Show Volumes in Terminal
+    }
+
+    return stringParseResult;
 }
 /**
  * @brief move files from mass storage to the save directory
@@ -96,8 +74,8 @@ auto usbMSC::copy(std::string stringTargetSavePath) -> bool
         }
 
         // unmount the volume
-        std::string stringUnmountCmd = "diskutil unmount \"" + std::string(stringOwonVolume) + "\"";
-        system(stringUnmountCmd.c_str());
+        // std::string stringUnmountCmd = "diskutil unmount \"" + std::string(stringOwonVolume) + "\"";
+        //system(stringUnmountCmd.c_str());
         volumeFound = false;
         return true;
     }
@@ -134,7 +112,7 @@ auto usbMSC::getVolumePath(std::array<char, size> arrayBuffer) -> void
         stringVolumePath = stringBuffer.substr(startPos, endPos - startPos);
     }
 #elif __APPLE__
-    stringVolumePath = "/Volumes/" + std::string(stringOwonVolume);
+    //
 #endif
 }
 
@@ -204,4 +182,83 @@ auto usbMSC::getFiles(getFile type, uint8_t fileNo) -> bool
     }
     else
         return false;
+}
+/**
+ * @brief Check the inserted string whether it's a valid OWON volume
+ *
+ * @return
+ */
+auto usbMSC::checkVolumeString(std::string stringVolume) -> bool
+{
+    bool ret = false;
+
+    // exit if the volume is a system volume
+    // exit if the volume is to big
+    if(isSystemVolume(stringVolume) || isToBig(stringVolume))
+        return ret;
+
+    // exit if no CSV Files present
+    return tryReadingCsvFiles(stringVolume) ? true : false;
+
+}
+auto usbMSC::isSystemVolume(std::string stringVolume) -> bool
+{
+    #ifdef __APPLE__
+
+        std::istringstream iss(stringVolume);
+        std::vector<std::string> stringComponents;
+
+        for (std::string s; getline(iss, s, '/'); )
+        {
+            stringComponents.push_back(s);
+
+        }
+
+        for (auto &component : stringComponents)
+        {
+            if (component == "System")
+                return true;
+        }
+
+    #endif
+}
+/**
+ * @brief Check the size whether it's fitting to the volume size of the owon internal storage
+ *
+ * @param stringVolume
+ * @return
+ */
+auto usbMSC::isToBig(std::string stringVolume) -> bool
+{
+    //using statvfs (struct which supplies informations about system) to get the volume size
+    #ifdef __APPLE__ | __linux__
+    struct statvfs stat;
+    if(statvfs(stringVolume.c_str(), &stat) != 0)
+    {
+        std::cerr <<   "Error: statvfs() failed for " << stringVolume << std::endl;
+        return false;
+    }
+    auto tenMegabyte = 10 * 1024 * 1024;
+    auto totalSize = stat.f_blocks * stat.f_frsize;
+
+    return totalSize >= tenMegabyte ? true : false;
+
+    #endif
+}
+/**
+ * @brief  Check if the volume contains CSV files of the OWON scope
+ *
+ * @param stringVolume
+ * @return true if one of the files is present
+ */
+auto usbMSC::tryReadingCsvFiles(std::string stringVolume) -> bool
+{
+    if (    std::filesystem::exists(stringVolume + "/WAVE1.CSV")
+        ||  std::filesystem::exists(stringVolume + "/WAVE2.CSV")
+        ||  std::filesystem::exists(stringVolume + "/WAVE3.CSV")
+        ||  std::filesystem::exists(stringVolume + "/WAVE4.CSV"))
+        return true;
+    else
+        return false;
+
 }

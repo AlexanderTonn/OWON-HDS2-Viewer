@@ -13,6 +13,7 @@
 
 #include <cstdint>
 
+
 class device
 {
 private:

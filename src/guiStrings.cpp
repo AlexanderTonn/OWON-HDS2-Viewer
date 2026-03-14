@@ -24,10 +24,11 @@ auto guiTexts::init() -> void
                  "Period",
                  "V per ADC Value",
                  "Time interval"},
-                {"No file", "Current file: "}};
+                {"No file", "Current file: "},
+                {"Please select the mass storage device", "Invalid volume! The volume is too big or a system volume"}};
 
     cb[ENG] = {{"Unit"}, {"mV", "V"}};
 
-    chkbx[ENG] = {{"Add Cursors: Voltage", "Add Cursors: Time", "Search for OWON MSC"}};
+    chkbx[ENG] = {{"Add Cursors: Voltage", "Add Cursors: Time", "Get files from OWON MSC"}};
 
 }

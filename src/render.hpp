@@ -36,6 +36,8 @@ private:
     fileHandler _fileMsc; // Instance for mass storage file handling
     fileHandler _fileCSV; // Instance for CSV file handling
 
+    auto mainPage() -> void;
+
     // Window settings
 
 private:
@@ -84,7 +86,6 @@ private:
 private:
     std::array<funcTrigger, 1> _trig; // increase the Array size if you need more triggers
 
-    auto trigMscDetection() -> void;
     bool findOwonVolumeActive = false;  // if true, the program will search for the owon volume
 
     // Footer
