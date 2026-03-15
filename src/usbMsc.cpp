@@ -147,28 +147,21 @@ auto usbMSC::getDate() -> std::string
  */
 auto usbMSC::getFiles(getFile type, int fileNo) -> bool
 {
-
+    auto sourcePath = mStringVolumePath;
     switch (type)
     {
     case getFile::BMP:
-        mStringVolumePath += "/" + std::string("IMAGE") + std::to_string(fileNo) + ".BMP";
+        sourcePath += "/" + std::string("IMAGE") + std::to_string(fileNo) + ".BMP";
         break;
     case getFile::CSV:
-        mStringVolumePath += "/" + std::string("WAVE") + std::to_string(fileNo) + ".CSV";
-        std::cout << "Trying to get file: " << fileNo << std::endl;
+        sourcePath += "/" + std::string("WAVE") + std::to_string(fileNo) + ".CSV";
         break;
     default:
         return false;
         break;
     }
-    // Move
 
-    if(!std::filesystem::exists(mStringVolumePath))
-    {
-        return false;
-    }
-
-    std::filesystem::copy(mStringVolumePath, mStringSavePath, std::filesystem::copy_options::overwrite_existing);
+    std::filesystem::copy(sourcePath, mStringSavePath, std::filesystem::copy_options::overwrite_existing);
 
     return true;
 
@@ -184,8 +177,8 @@ auto usbMSC::checkVolumeString(std::string stringVolume) -> bool
 
     // exit if the volume is a system volume
     // exit if the volume is to big
-    if (isSystemVolume(stringVolume) || isToBig(stringVolume))
-        return ret;
+    //if (isSystemVolume(stringVolume) || isToBig(stringVolume))
+    //    return ret;
 
     // exit if no CSV Files present
     return tryReadingCsvFiles(stringVolume) ? true : false;

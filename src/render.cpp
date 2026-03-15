@@ -433,9 +433,12 @@ auto WindowClass::handleFileData() -> void
     if (_fileCSV.check())
         _csvHandler.parseCSV(_fileCSV.stringCurrentFile, _csvHandler.csvData);
 
+    /*
+
     if (_fileMsc.check())
         if (_usbMSC.copy(_fileMsc.stringCurrentFile))
         {
             arrayFooterData.at(1) = "Files copied to " + _fileMsc.stringCurrentFile;
         }
+    */
 }
