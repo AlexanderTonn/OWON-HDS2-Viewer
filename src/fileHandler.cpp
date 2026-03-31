@@ -8,7 +8,6 @@
  */
 auto fileHandler::checkFileString(std::string stringFileName) -> bool
 {
-    std::cout << stringFileName << std::endl;
     if (std::filesystem::exists(stringFileName))
     {
         return true;
@@ -219,9 +218,6 @@ auto fileHandler::initFilePath(standardPath option) -> void
 
 #endif
         break;
-    default:
-        std::cout << "No valid path selected, use desktop path as default" << std::endl;
-        break;
     }
 }
 /**
@@ -237,7 +233,7 @@ auto fileHandler::check() -> bool
     if (!fileLoaded && !stringCurrentFile.empty())
     {
         fileLoaded = true;
-        return ret;
+        return fileLoaded;
     }
     return ret;
 }

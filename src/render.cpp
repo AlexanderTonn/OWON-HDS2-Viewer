@@ -21,8 +21,8 @@ void WindowClass::Draw(std::string_view label)
 
     if (firstCycle)
     {
-        _fileCSV.initFilePath(fileHandler::standardPath::DESKTOP);
-        _fileMsc.initFilePath(fileHandler::standardPath::DESKTOP);
+        _fileCSV.initFilePath(fileHandler::standardPath::DOCUMENTS);
+        _fileMsc.initFilePath(fileHandler::standardPath::DOCUMENTS);
         _guiTexts.init();
         firstCycle = false;
     }
@@ -39,7 +39,7 @@ void WindowClass::Draw(std::string_view label)
     switch (pageId)
     {
     case Dialogs::currentPage::MAIN:
-            mainPage();
+        mainPage();
         break;
 
     case Dialogs::currentPage::OPEN_CSV_FILE:
@@ -112,14 +112,12 @@ auto WindowClass::drawPlot(voltUnit unit) -> void
     {
         ImPlot::SetupAxes(_guiTexts.lbl.at(languageSelection).plot.at(1).c_str(),
                           _guiTexts.lbl.at(languageSelection).plot.at(0).c_str(),
-                          ImPlotAxisFlags_None,
                           ImPlotAxisFlags_AutoFit);
         ImPlot::SetupAxisLimitsConstraints(ImAxis_X1, 0, numOfPoints);
-
         for (std::size_t i = 0; i < numOfPoints; ++i)
         {
-            PlotX.at(i) = static_cast<double>(i);
 
+            PlotX.at(i) = static_cast<double>(i);
             // Raw data comes in as mv
             switch (unit)
             {
@@ -148,7 +146,7 @@ auto WindowClass::drawPlot(voltUnit unit) -> void
 auto WindowClass::mainPage() -> void
 {
     drawMenu();
-    ImGui::SetCursorPos(ImVec2(0.0F, 18.0F));
+    ImGui::SetCursorPos(ImVec2(0.0F, 0.0F));
 
     drawHeader();
     drawCursorData();
@@ -320,7 +318,6 @@ auto WindowClass::drawCursors() -> void
 auto WindowClass::drawCursorData() -> void
 {
     constexpr static auto tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_SizingStretchSame;
-
     if (cursorX)
     {
         ImGui::BeginTable("###XCursor", 4, tableFlags);
@@ -431,14 +428,14 @@ auto WindowClass::handleFileData() -> void
 
     // Draw the plot, if file is present
     if (_fileCSV.check())
+    {
         _csvHandler.parseCSV(_fileCSV.stringCurrentFile, _csvHandler.csvData);
+    }
 
-    /*
 
     if (_fileMsc.check())
         if (_usbMSC.copy(_fileMsc.stringCurrentFile))
         {
             arrayFooterData.at(1) = "Files copied to " + _fileMsc.stringCurrentFile;
         }
-    */
 }

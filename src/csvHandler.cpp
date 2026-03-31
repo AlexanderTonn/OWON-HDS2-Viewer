@@ -31,6 +31,7 @@ auto csvHandler::parseCSV(std::string stringFilename, csvDataStruct *data) -> vo
     // Reading whole line
     std::string line;
     uint16_t lineCount = 0;
+    std::cout << "Parsing CSV File: " << stringFilename << std::endl;
     while(std::getline(file,line))
     {
 
@@ -38,6 +39,7 @@ auto csvHandler::parseCSV(std::string stringFilename, csvDataStruct *data) -> vo
         std::stringstream stringStream(line);
         std::string token;
         // Parse the first lines as std::string for header Data
+
         if(lineCount < 11)
         {
             std::getline(stringStream,token,',');
